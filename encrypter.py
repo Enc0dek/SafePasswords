@@ -1,50 +1,47 @@
 import os
 import base64
-import glob
 import getpass
 
 path = os.getcwd()
 
 
+def encode_64(data: str) -> str:
+    try:
+        dataascii = data.encode("ascii")
+        data_64 = base64.b64encode(dataascii)
+        return data_64.decode("ascii")
+    except UnicodeError:
+        print("only ascii characters")
+        
+
+def decode_64(data: str) -> str:
+    try:
+        datadecoded = base64.b64decode(data)
+        return datadecoded.decode("ascii")
+    except UnicodeError:
+        print("only ascii characters are allowed")
+    
+    
 def encrypt(email: str = None, pwd: str = None, name: str = None, filename: bool = False):
     if filename:
         try:
-            nameascii = name.encode("ascii")
-            try:
-                name64 = base64.b64encode(nameascii)
-                return name64.decode('ascii')
-            except UnicodeError:
-                print("only ascii characters")
+            return encode_64(name)
         except AttributeError:
             print("all of data need to be string")
     else:
         try:
-            emailascii = email.encode("ascii")
-            pwdascii = pwd.encode("ascii")
-            nameascii = name.encode("ascii")
-            try:
-                email64 = base64.b64encode(emailascii)
-                pwd64 = base64.b64encode(pwdascii)
-                name64 = base64.b64encode(nameascii)
-                return email64.decode('ascii'), pwd64.decode('ascii'), name64.decode('ascii')
-            except UnicodeError:
-                print("only ascii characters")
+            return encode_64(email), encode_64(pwd), encode_64(name)
         except AttributeError:
-            print("all of data need to be string")
+            print("only ascii characters")
         
     
-def decrypt(encrypted: str, filename: bool = False):
+def decrypt(data: str, filename: bool = False):
     if filename:
-        namebytes = base64.b64decode(encrypted)
-        return namebytes.decode("ascii")
+        return decode_64(data)
     else:
         try: 
-            x = encrypted.split(":")
-            emailencrypted = x[0]
-            pwdencrypted = x[1]
-            emailbytes = base64.b64decode(emailencrypted)
-            pwdbytes = base64.b64decode(pwdencrypted)
-            return emailbytes.decode("ascii"), pwdbytes.decode("ascii")
+            email, pwd = data.split(":")
+            return decode_64(email), decode_64(pwd)
         except IndexError:
             print("put the password and the email not just one")
         
@@ -79,53 +76,54 @@ def deletepwd(name: str) -> None:
     
 def listofpwd() -> list:
     pwdsaved = []
-    listpwd = glob.glob("*.txt")
-    for pwd in range(len(listpwd)):
-        listpwd[pwd] = listpwd[pwd].replace(".txt", "")
-    for pwdencrypted in range(len(listpwd)):
-        pwdsaved.append(decrypt(listpwd[pwdencrypted], True))
-    if len(pwdsaved) == 0:
+    for entry in os.scandir('.'):
+        if entry.is_file() and entry.name.endswith('.txt'):
+            name = os.path.splitext(entry.name)[0]
+            pwdsaved.append(decrypt(name, True))
+    if not pwdsaved:
         print("No passwords added try to add one")
     else:
         return pwdsaved
     
     
-while True:
-    print('''
-
-    1. See the passwords saved.
-    2. Read a password.
-    3. Save a new password.
-    4. Delete a password.
-    5. Exit.
-
-    ''')
-    try:
-        user = int(input("_: "))
-        
-        if user == 1:
-            print(listofpwd())
-        elif user == 2:
-            pwdname = str(input("Enter the name of the password: "))
-            readpwd(encrypt(name=pwdname, filename=True))
-        elif user == 3:
-            newemail = str(input("Put the email of the account: "))
-            newpwd = getpass.getpass("Put the new password: ")
-            namepwd = str(input("put the name of the password: "))
-            if not newemail or not newpwd or not namepwd:
-                print("all of the data new to be filled")
-                print("password not added")
+def main() -> None:
+    while True:
+        print('''
+    
+        1. See the passwords saved.
+        2. Read a password.
+        3. Save a new password.
+        4. Delete a password.
+        5. Exit.
+    
+        ''')
+        try:
+            user = int(input("_: "))
+    
+            if user == 1:
+                print(listofpwd())
+            elif user == 2:
+                pwdname = str(input("Enter the name of the password: "))
+                readpwd(encrypt(name=pwdname, filename=True))
+            elif user == 3:
+                newemail = str(input("Put the email of the account: "))
+                newpwd = getpass.getpass("Put the new password: ")
+                namepwd = str(input("put the name of the password: "))
+                if not newemail or not newpwd or not namepwd:
+                    print("all of the data new to be filled")
+                    print("password not added")
+                else:
+                    newdata = encrypt(email=newemail, pwd=newpwd, name=namepwd)
+                    savepwd(newdata[0], newdata[1], newdata[2])
+            elif user == 4:
+                pwdel = str(input("Enter a password: "))
+                deletepwd(encrypt(name=pwdel, filename=True))
+            elif user == 5:
+                break
             else:
-                newdata = encrypt(email=newemail, pwd=newpwd, name=namepwd)
-                savepwd(newdata[0], newdata[1], newdata[2])
-        elif user == 4:
-            pwdel = str(input("Enter a password: "))
-            deletepwd(encrypt(name=pwdel, filename=True))
-        elif user == 5:
-            break
-        else:
+                print("that is not a valid option")
+        except ValueError:
             print("that is not a valid option")
-    except ValueError:
-        print("that is not a valid option")
-    
-    
+            
+            
+main()
